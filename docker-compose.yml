@@ -60,6 +60,11 @@ services:
       - 8100:8000
     volumes:
       - ../processor:/app
+    depends_on:
+      surrealdb:
+        condition: service_started
+      mqtt:
+        condition: service_started
 
   user-dashboard:
     image: node:22-alpine
