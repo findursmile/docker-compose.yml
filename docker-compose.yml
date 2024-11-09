@@ -1,0 +1,74 @@
+services:
+  surrealdb:
+    image: surrealdb/surrealdb:v1.5.5
+    env_file:
+      - .env
+    entrypoint:
+      - /surreal
+      - start
+      - --auth
+      - --user
+      - root
+      - --pass
+      - root
+    volumes:
+      - db:/mydata
+
+  mqtt:
+    image: rabbitmq:3-management
+    ports:
+      - 5671:5671
+      - 15672:15672
+
+  tenant-api:
+    image: cosmtrek/air
+    env_file:
+      - .env
+    working_dir: /go/src/github.com/findursmile/tenant-api
+    volumes:
+      - ../tenant:/go/src/github.com/findursmile/tenant-api
+    ports:
+      - 8080:8080
+    depends_on:
+      surrealdb:
+        condition: service_started
+      mqtt:
+        condition: service_started
+
+  tenant-dashboard:
+    image: node:22-alpine
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - 5173:5173
+    working_dir: /app
+    volumes:
+      - ../tenant-dashboard:/app
+
+  processor:
+    image: ghcr.io/findursmile/processor
+    volumes:
+      - ../processor:/app
+    depends_on:
+      surrealdb:
+        condition: service_started
+      mqtt:
+        condition: service_started
+
+  user-api:
+    image: ghcr.io/findursmile/user-api
+    ports:
+      - 8100:8000
+    volumes:
+      - ../processor:/app
+
+  user-dashboard:
+    image: node:22-alpine
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - 5174:5173
+    working_dir: /app
+    volumes:
+      - ../user:/app
+
+volumes:
+  db:
