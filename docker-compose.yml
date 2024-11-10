@@ -1,8 +1,6 @@
 services:
   surrealdb:
     image: surrealdb/surrealdb:v1.5.5
-    env_file:
-      - .env
     entrypoint:
       - /surreal
       - start
@@ -11,24 +9,25 @@ services:
       - root
       - --pass
       - root
+      - rocksdb://mydata/data.db
     volumes:
-      - db:/mydata
+      - db-data:/mydata/data.db
 
   mqtt:
     image: rabbitmq:3-management
     ports:
-      - 5671:5671
+      - 5672:5672
       - 15672:15672
 
   tenant-api:
     image: cosmtrek/air
-    env_file:
-      - .env
+    ports:
+      - 8080:8080
+    environment:
+      DB_HOST: surrealdb
     working_dir: /go/src/github.com/findursmile/tenant-api
     volumes:
       - ../tenant:/go/src/github.com/findursmile/tenant-api
-    ports:
-      - 8080:8080
     depends_on:
       surrealdb:
         condition: service_started
@@ -48,6 +47,7 @@ services:
     image: ghcr.io/findursmile/processor
     volumes:
       - ../processor:/app
+    restart: on-failure
     depends_on:
       surrealdb:
         condition: service_started
@@ -57,7 +57,7 @@ services:
   user-api:
     image: ghcr.io/findursmile/user-api
     ports:
-      - 8100:8000
+      - 8989:8000
     volumes:
       - ../processor:/app
     depends_on:
@@ -76,4 +76,4 @@ services:
       - ../user:/app
 
 volumes:
-  db:
+  db-data:
